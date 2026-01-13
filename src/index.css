@@ -1,0 +1,109 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Definition of the design system. All colors, gradients, fonts, etc should be defined here. 
+All colors MUST be HSL.
+*/
+
+@layer base {
+  :root {
+    /* African-inspired SabiBoss Color System */
+    --background: 0 0% 100%;
+    --foreground: 222 47% 11%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222 47% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222 47% 11%;
+
+    /* Vibrant Orange - Energy & Action */
+    --primary: 16 100% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 16 100% 95%;
+
+    /* Prosperity Green - Growth & Success */
+    --secondary: 142 71% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 142 71% 95%;
+
+    /* Trust Blue - Professional & Reliable */
+    --accent: 221 83% 38%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 221 83% 95%;
+
+    --muted: 210 40% 96%;
+    --muted-foreground: 215 16% 47%;
+
+    --destructive: 0 84% 60%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 32% 91%;
+    --input: 214 32% 91%;
+    --ring: 16 100% 58%;
+
+    --radius: 0.75rem;
+
+    /* Gradients */
+    --gradient-primary: linear-gradient(135deg, hsl(16 100% 58%), hsl(16 100% 68%));
+    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 55%));
+    --gradient-dashboard: linear-gradient(180deg, hsl(16 100% 98%), hsl(0 0% 100%));
+    
+    /* Shadows */
+    --shadow-soft: 0 2px 8px -2px hsl(16 100% 58% / 0.1);
+    --shadow-card: 0 4px 12px -2px hsl(222 47% 11% / 0.08);
+    --shadow-elevated: 0 8px 24px -4px hsl(222 47% 11% / 0.12);
+  }
+
+  .dark {
+    --background: 222 47% 8%;
+    --foreground: 210 40% 98%;
+
+    --card: 222 47% 11%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222 47% 11%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 16 100% 58%;
+    --primary-foreground: 0 0% 100%;
+    --primary-light: 16 100% 15%;
+
+    --secondary: 142 71% 45%;
+    --secondary-foreground: 0 0% 100%;
+    --secondary-light: 142 71% 15%;
+
+    --accent: 221 83% 48%;
+    --accent-foreground: 0 0% 100%;
+    --accent-light: 221 83% 15%;
+
+    --muted: 217 33% 17%;
+    --muted-foreground: 215 20% 65%;
+
+    --destructive: 0 63% 31%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 217 33% 17%;
+    --input: 217 33% 17%;
+    --ring: 16 100% 58%;
+
+    --gradient-primary: linear-gradient(135deg, hsl(16 100% 58%), hsl(16 100% 48%));
+    --gradient-success: linear-gradient(135deg, hsl(142 71% 45%), hsl(142 71% 35%));
+    --gradient-dashboard: linear-gradient(180deg, hsl(222 47% 11%), hsl(222 47% 8%));
+    
+    --shadow-soft: 0 2px 8px -2px hsl(0 0% 0% / 0.3);
+    --shadow-card: 0 4px 12px -2px hsl(0 0% 0% / 0.4);
+    --shadow-elevated: 0 8px 24px -4px hsl(0 0% 0% / 0.5);
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+  }
+}
