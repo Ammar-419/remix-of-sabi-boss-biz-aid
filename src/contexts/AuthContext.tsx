@@ -7,7 +7,16 @@ import { toast } from 'sonner';
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  signUp: (email: string, password: string, fullName: string, phone: string, businessName?: string) => Promise<void>;
+  signUp: (
+    email: string,
+    password: string,
+    fullName: string,
+    phone: string,
+    businessName?: string,
+    businessType?: string,
+    businessLocation?: string,
+    preferredLanguage?: string
+  ) => Promise<void>;
   signIn: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
 }
@@ -20,35 +29,53 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const navigate = useNavigate();
 
   useEffect(() => {
-    // Check active session
+    // Set up auth state listener FIRST
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+    });
+
+    // THEN check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setUser(session?.user ?? null);
       setLoading(false);
     });
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-    });
-
     return () => subscription.unsubscribe();
   }, []);
 
-  const signUp = async (email: string, password: string, fullName: string, phone: string, businessName?: string) => {
+  const signUp = async (
+    email: string,
+    password: string,
+    fullName: string,
+    phone: string,
+    businessName?: string,
+    businessType?: string,
+    businessLocation?: string,
+    preferredLanguage?: string
+  ) => {
+    const redirectUrl = `${window.location.origin}/`;
+    
     const { data, error } = await supabase.auth.signUp({
       email,
       password,
+      options: {
+        emailRedirectTo: redirectUrl
+      }
     });
 
     if (error) throw error;
 
     if (data.user) {
-      // Create profile
+      // Create profile with all fields
       const { error: profileError } = await supabase.from('profiles').insert({
         user_id: data.user.id,
         full_name: fullName,
         phone,
-        business_name: businessName,
+        email,
+        business_name: businessName || null,
+        business_type: businessType || null,
+        business_location: businessLocation || null,
+        preferred_language: preferredLanguage || 'en',
       });
 
       if (profileError) throw profileError;
@@ -61,7 +88,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       if (subError) throw subError;
 
-      toast.success('Account created successfully!');
+      // Create default notification settings
+      const { error: notifError } = await supabase.from('user_notification_settings').insert({
+        user_id: data.user.id,
+      });
+
+      if (notifError) {
+        console.error('Failed to create notification settings:', notifError);
+      }
+
+      toast.success('Account created successfully! Please check your email to verify.');
       navigate('/');
     }
   };

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -16,14 +16,8 @@ export const useExpenses = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      fetchExpenses();
-      subscribeToChanges();
-    }
-  }, [user]);
-
-  const fetchExpenses = async () => {
+  const fetchExpenses = useCallback(async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('expenses')
@@ -37,45 +31,71 @@ export const useExpenses = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToChanges = () => {
-    const channel = supabase
-      .channel('expenses-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
-        fetchExpenses();
-      })
-      .subscribe();
+  useEffect(() => {
+    if (user) {
+      fetchExpenses();
+      
+      // Subscribe to realtime changes
+      const channel = supabase
+        .channel('expenses-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'expenses' }, () => {
+          fetchExpenses();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchExpenses]);
 
-  const addExpense = async (expense: Omit<Expense, 'id' | 'expense_date'>) => {
+  const addExpense = async (expense: Omit<Expense, 'id' | 'expense_date'>): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      const { error } = await supabase.from('expenses').insert({
-        user_id: user?.id,
-        ...expense,
-      });
+      // Use insert().select() to get the created record back
+      const { data, error } = await supabase
+        .from('expenses')
+        .insert({
+          user_id: user.id,
+          ...expense,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Immediately update local state with the new record
+      if (data) {
+        setExpenses(prevExpenses => [data, ...prevExpenses]);
+      }
+      
       toast.success('Expense logged successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to log expense');
+      return false;
     }
   };
 
-  const deleteExpense = async (id: string) => {
+  const deleteExpense = async (id: string): Promise<boolean> => {
     try {
       const { error } = await supabase.from('expenses').delete().eq('id', id);
 
       if (error) throw error;
+      
+      // Immediately update local state
+      setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== id));
+      
       toast.success('Expense deleted successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete expense');
+      return false;
     }
   };
 
-  return { expenses, loading, addExpense, deleteExpense };
+  return { expenses, loading, addExpense, deleteExpense, refetch: fetchExpenses };
 };
