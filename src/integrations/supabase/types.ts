@@ -158,10 +158,44 @@ export type Database = {
         }
         Relationships: []
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          related_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message: string
+          related_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          related_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           business_name: string | null
           created_at: string | null
+          email: string | null
           full_name: string
           id: string
           phone: string
@@ -171,6 +205,7 @@ export type Database = {
         Insert: {
           business_name?: string | null
           created_at?: string | null
+          email?: string | null
           full_name: string
           id?: string
           phone: string
@@ -180,6 +215,7 @@ export type Database = {
         Update: {
           business_name?: string | null
           created_at?: string | null
+          email?: string | null
           full_name?: string
           id?: string
           phone?: string
@@ -247,6 +283,36 @@ export type Database = {
           sponsor_name?: string | null
           tier?: string
           updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_notification_settings: {
+        Row: {
+          created_at: string
+          email_low_inventory: boolean
+          email_overdue_loans: boolean
+          email_payment_reminders: boolean
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email_low_inventory?: boolean
+          email_overdue_loans?: boolean
+          email_payment_reminders?: boolean
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email_low_inventory?: boolean
+          email_overdue_loans?: boolean
+          email_payment_reminders?: boolean
+          id?: string
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

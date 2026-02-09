@@ -106,13 +106,12 @@ export const useWallet = () => {
 
     const transactionData = {
       id: crypto.randomUUID(),
-      type: 'send',
+      type: 'send' as const,
       amount,
       recipient,
-      status: 'pending_sync',
+      status: 'pending_sync' as const,
       verification_hash: verificationHash,
       qr_code: qrCode,
-      local_timestamp: new Date().toISOString(),
     };
 
     const transactionCode = saveOfflineTransaction(transactionData);
@@ -140,11 +139,10 @@ export const useWallet = () => {
 
     const transactionData = {
       id: crypto.randomUUID(),
-      type: 'receive',
+      type: 'receive' as const,
       amount,
       sender,
-      status: 'pending_sync',
-      local_timestamp: new Date().toISOString(),
+      status: 'pending_sync' as const,
     };
 
     const transactionCode = saveOfflineTransaction(transactionData);
