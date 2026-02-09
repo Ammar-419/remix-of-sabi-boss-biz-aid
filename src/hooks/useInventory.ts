@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -17,14 +17,8 @@ export const useInventory = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      fetchInventory();
-      subscribeToChanges();
-    }
-  }, [user]);
-
-  const fetchInventory = async () => {
+  const fetchInventory = useCallback(async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('inventory')
@@ -38,59 +32,97 @@ export const useInventory = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToChanges = () => {
-    const channel = supabase
-      .channel('inventory-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
-        fetchInventory();
-      })
-      .subscribe();
+  useEffect(() => {
+    if (user) {
+      fetchInventory();
+      
+      // Subscribe to realtime changes
+      const channel = supabase
+        .channel('inventory-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'inventory' }, () => {
+          fetchInventory();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchInventory]);
 
-  const addItem = async (item: Omit<InventoryItem, 'id'>) => {
+  const addItem = async (item: Omit<InventoryItem, 'id'>): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      const { error } = await supabase.from('inventory').insert({
-        user_id: user?.id,
-        ...item,
-      });
+      // Use insert().select() to get the created record back
+      const { data, error } = await supabase
+        .from('inventory')
+        .insert({
+          user_id: user.id,
+          ...item,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Immediately update local state with the new record
+      if (data) {
+        setInventory(prevInventory => [data, ...prevInventory]);
+      }
+      
       toast.success('Item added successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to add item');
+      return false;
     }
   };
 
-  const updateItem = async (id: string, updates: Partial<InventoryItem>) => {
+  const updateItem = async (id: string, updates: Partial<InventoryItem>): Promise<boolean> => {
     try {
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('inventory')
         .update(updates)
-        .eq('id', id);
+        .eq('id', id)
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Immediately update local state
+      if (data) {
+        setInventory(prevInventory => 
+          prevInventory.map(item => item.id === id ? data : item)
+        );
+      }
+      
       toast.success('Item updated successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to update item');
+      return false;
     }
   };
 
-  const deleteItem = async (id: string) => {
+  const deleteItem = async (id: string): Promise<boolean> => {
     try {
       const { error } = await supabase.from('inventory').delete().eq('id', id);
 
       if (error) throw error;
+      
+      // Immediately update local state
+      setInventory(prevInventory => prevInventory.filter(item => item.id !== id));
+      
       toast.success('Item deleted successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete item');
+      return false;
     }
   };
 
-  return { inventory, loading, addItem, updateItem, deleteItem };
+  return { inventory, loading, addItem, updateItem, deleteItem, refetch: fetchInventory };
 };

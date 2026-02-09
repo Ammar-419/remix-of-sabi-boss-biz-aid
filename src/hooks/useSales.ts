@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
@@ -17,14 +17,8 @@ export const useSales = () => {
   const [loading, setLoading] = useState(true);
   const { user } = useAuth();
 
-  useEffect(() => {
-    if (user) {
-      fetchSales();
-      subscribeToChanges();
-    }
-  }, [user]);
-
-  const fetchSales = async () => {
+  const fetchSales = useCallback(async () => {
+    if (!user) return;
     try {
       const { data, error } = await supabase
         .from('sales')
@@ -38,45 +32,71 @@ export const useSales = () => {
     } finally {
       setLoading(false);
     }
-  };
+  }, [user]);
 
-  const subscribeToChanges = () => {
-    const channel = supabase
-      .channel('sales-changes')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
-        fetchSales();
-      })
-      .subscribe();
+  useEffect(() => {
+    if (user) {
+      fetchSales();
+      
+      // Subscribe to realtime changes
+      const channel = supabase
+        .channel('sales-changes')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'sales' }, () => {
+          fetchSales();
+        })
+        .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, fetchSales]);
 
-  const addSale = async (sale: Omit<Sale, 'id' | 'sale_date'>) => {
+  const addSale = async (sale: Omit<Sale, 'id' | 'sale_date'>): Promise<boolean> => {
+    if (!user) return false;
+    
     try {
-      const { error } = await supabase.from('sales').insert({
-        user_id: user?.id,
-        ...sale,
-      });
+      // Use insert().select() to get the created record back
+      const { data, error } = await supabase
+        .from('sales')
+        .insert({
+          user_id: user.id,
+          ...sale,
+        })
+        .select()
+        .single();
 
       if (error) throw error;
+      
+      // Immediately update local state with the new record
+      if (data) {
+        setSales(prevSales => [data, ...prevSales]);
+      }
+      
       toast.success('Sale recorded successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to record sale');
+      return false;
     }
   };
 
-  const deleteSale = async (id: string) => {
+  const deleteSale = async (id: string): Promise<boolean> => {
     try {
       const { error } = await supabase.from('sales').delete().eq('id', id);
 
       if (error) throw error;
+      
+      // Immediately update local state
+      setSales(prevSales => prevSales.filter(sale => sale.id !== id));
+      
       toast.success('Sale deleted successfully');
+      return true;
     } catch (error: any) {
       toast.error(error.message || 'Failed to delete sale');
+      return false;
     }
   };
 
-  return { sales, loading, addSale, deleteSale };
+  return { sales, loading, addSale, deleteSale, refetch: fetchSales };
 };
